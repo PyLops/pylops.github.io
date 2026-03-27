@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PyLops | Linear Operators for Inverse Problems</title>
+    <meta
+      name="description"
+      content="PyLops is an open-source, backend-agnostic, matrix-free Python library of linear operators and inverse problem solvers."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-accent" aria-hidden="true"></div>
+    <header class="site-header section reveal">
+      <p class="eyebrow">PyLops</p>
+      <h1>Matrix-free linear operators for large-scale inverse problems.</h1>
+      <p class="lead">
+        Open-source, backend-agnostic, and built around forward/adjoint
+        operators with iterative solvers for practical scientific workflows.
+      </p>
+      <a
+        class="cta cta-primary"
+        href="https://github.com/pylops/"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="View PyLops on GitHub"
+      >
+        GitHub Org.
+      </a>
+    </header>
+
+    <main>
+      <section class="section reveal" id="features">
+        <h2>Key features</h2>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3.5" y="4.5" width="17" height="15" rx="2"></rect>
+                <path d="M8 9h8M8 13h8M8 17h5"></path>
+              </svg>
+            </span>
+            <h3>Matrix-free operators</h3>
+            <p>
+              Represent operators by forward and adjoint matrix-vector products
+              instead of explicit matrices.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 19h16"></path>
+                <path d="M6 16l4-4 3 3 5-6"></path>
+                <circle cx="10" cy="12" r="1"></circle>
+              </svg>
+            </span>
+            <h3>Large-scale ready</h3>
+            <p>
+              Designed for problems where explicit matrices are prohibitive in
+              memory and compute footprint.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 9h5V4"></path>
+                <path d="M19 15h-5v5"></path>
+                <path d="M19 9a7 7 0 0 0-12.2-4.8"></path>
+                <path d="M5 15a7 7 0 0 0 12.2 4.8"></path>
+              </svg>
+            </span>
+            <h3>Inverse problem solvers</h3>
+            <p>
+              Includes iterative methods for least-squares and
+              sparsity-promoting inversion workflows.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 4v2M12 18v2M4 12h2M18 12h2M6.4 6.4l1.4 1.4M16.2 16.2l1.4 1.4M17.6 6.4l-1.4 1.4M7.8 16.2l-1.4 1.4"></path>
+              </svg>
+            </span>
+            <h3>Stand-alone LinearOperator</h3>
+            <p>
+              Provides a dedicated <code>LinearOperator</code> interface
+              inspired by SciPy and tailored for PyLops usage.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M7 7h10v4H7z"></path>
+                <path d="M10 11v3M14 11v3"></path>
+                <path d="M9 14h6"></path>
+                <path d="M12 14v5"></path>
+              </svg>
+            </span>
+            <h3>Backend-agnostic design</h3>
+            <p>
+              Uses an idiomatic approach that fits modern scientific Python
+              ecosystems and multiple computational backends.
+            </p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="8"></circle>
+                <path d="M4 12h16M12 4a12 12 0 0 1 0 16M12 4a12 12 0 0 0 0 16"></path>
+              </svg>
+            </span>
+            <h3>Open-source project</h3>
+            <p>
+              Community-driven and affiliated with NumFOCUS, with strong focus
+              on transparent development.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section reveal" id="domains">
+        <h2>Domains</h2>
+        <p class="links-subtitle">
+          Maturity snapshot across key application areas.
+        </p>
+        <div class="domain-list" role="list" aria-label="Domain maturity">
+          <div class="domain-item" role="listitem">
+            <span class="domain-name">Signal processing</span>
+            <span class="domain-meta">
+              <span class="star-rating" aria-label="4 out of 5 stars">
+                <span class="star filled">★</span><span class="star filled">★</span
+                ><span class="star filled">★</span
+                ><span class="star filled">★</span
+                ><span class="star empty">★</span>
+              </span>
+              <a
+                class="domain-example"
+                href="https://pylops.readthedocs.io/en/stable/tutorials/solvers.html#sphx-glr-tutorials-solvers-py"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open signal processing example"
+                >Example</a
+              >
+            </span>
+          </div>
+          <div class="domain-item" role="listitem">
+            <span class="domain-name">Image processing</span>
+            <span class="domain-meta">
+              <span class="star-rating" aria-label="3 out of 5 stars">
+                <span class="star filled">★</span><span class="star filled">★</span
+                ><span class="star filled">★</span><span class="star empty">★</span
+                ><span class="star empty">★</span>
+              </span>
+              <a
+                class="domain-example"
+                href="https://pylops.readthedocs.io/en/stable/gallery/plot_slopeest.html#sphx-glr-gallery-plot-slopeest-py"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open image processing example"
+                >Example</a
+              >
+            </span>
+          </div>
+          <div class="domain-item" role="listitem">
+            <span class="domain-name">Medical imaging</span>
+            <span class="domain-meta">
+              <span class="star-rating" aria-label="1 out of 5 stars">
+                <span class="star filled">★</span><span class="star empty">★</span
+                ><span class="star empty">★</span><span class="star empty">★</span
+                ><span class="star empty">★</span>
+              </span>
+              <a
+                class="domain-example"
+                href="https://pylops.readthedocs.io/en/stable/tutorials/ctscan.html#sphx-glr-tutorials-ctscan-py"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open medical imaging example"
+                >Example</a
+              >
+            </span>
+          </div>
+          <div class="domain-item" role="listitem">
+            <span class="domain-name">Geophysics</span>
+            <span class="domain-meta">
+              <span class="star-rating" aria-label="5 out of 5 stars">
+                <span class="star filled">★</span><span class="star filled">★</span
+                ><span class="star filled">★</span
+                ><span class="star filled">★</span
+                ><span class="star filled">★</span>
+              </span>
+              <a
+                class="domain-example"
+                href="https://pylops.readthedocs.io/en/stable/tutorials/deblending.html"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open geophysics example"
+                >Example</a
+              >
+            </span>
+          </div>
+        </div>
+        <p class="domains-cta">
+          Want to grow PyLops' competency in one of these domains, or add
+          support for your own domain? Start a discussion
+          <a
+            href="https://github.com/PyLops/pylops/discussions"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open PyLops discussions"
+            >here</a
+          >.
+        </p>
+      </section>
+
+      <section class="section reveal" id="links">
+        <h2>Explore our projects</h2>
+        <p class="links-subtitle">Official links and project stats.</p>
+
+        <div class="project-links">
+          <div class="project-row">
+            <p class="project-name">pylops</p>
+            <div class="links-grid">
+              <a
+                class="cta cta-link"
+                href="https://github.com/pylops/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open PyLops GitHub page"
+              >
+                <span>GitHub</span>
+                <span class="cta-badges">
+                  <img
+                    alt="PyLops GitHub stars"
+                    src="https://img.shields.io/github/stars/PyLops/pylops?style=flat&label=Stars"
+                  />
+                  <img
+                    alt="PyLops GitHub forks"
+                    src="https://img.shields.io/github/forks/PyLops/pylops?style=flat&label=Forks"
+                  />
+                </span>
+              </a>
+              <div
+                class="cta cta-link cta-docs"
+                aria-label="Open PyLops Documentation pages"
+              >
+                <span>Documentation</span>
+                <span class="cta-doc-links">
+                  <a
+                    href="https://pylops.readthedocs.io/en/stable/"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open PyLops stable documentation"
+                    >Stable</a
+                  >
+                  <a
+                    href="https://pylops.readthedocs.io/en/latest/"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open PyLops latest documentation"
+                    >Latest</a
+                  >
+                </span>
+              </div>
+              <a
+                class="cta cta-link"
+                href="https://pypi.org/project/pylops/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open PyLops PyPI page"
+              >
+                <span>PyPI</span>
+                <span class="cta-badges">
+                  <img
+                    alt="PyLops PyPI downloads"
+                    src="https://img.shields.io/pypi/dm/pylops?style=flat&label=Downloads"
+                  />
+                </span>
+              </a>
+              <a
+                class="cta cta-link"
+                href="https://anaconda.org/channels/conda-forge/packages/pylops/files?version=1.4.0"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open PyLops conda-forge page"
+              >
+                <span>conda-forge</span>
+                <span class="cta-badges">
+                  <img
+                    alt="PyLops conda-forge downloads"
+                    src="https://img.shields.io/conda/dn/conda-forge/pylops?style=flat&label=Downloads"
+                  />
+                </span>
+              </a>
+            </div>
+          </div>
+
+          <div class="project-row">
+            <p class="project-name">pyproximal</p>
+            <div class="links-grid">
+              <a
+                class="cta cta-link"
+                href="http://github.com/pyLops/pyproximal"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open pyproximal GitHub page"
+              >
+                <span>GitHub</span>
+                <span class="cta-badges">
+                  <img
+                    alt="pyproximal GitHub stars"
+                    src="https://img.shields.io/github/stars/PyLops/pyproximal?style=flat&label=Stars"
+                  />
+                  <img
+                    alt="pyproximal GitHub forks"
+                    src="https://img.shields.io/github/forks/PyLops/pyproximal?style=flat&label=Forks"
+                  />
+                </span>
+              </a>
+              <div
+                class="cta cta-link cta-docs"
+                aria-label="Open pyproximal Documentation pages"
+              >
+                <span>Documentation</span>
+                <span class="cta-doc-links">
+                  <a
+                    href="http://pyproximal.readthedocs.io/en/stable/"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open pyproximal documentation"
+                    >Stable</a
+                  >
+                </span>
+              </div>
+              <a
+                class="cta cta-link"
+                href="https://pypi.org/project/pyproximal/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open pyproximal PyPI page"
+              >
+                <span>PyPI</span>
+                <span class="cta-badges">
+                  <img
+                    alt="pyproximal PyPI downloads"
+                    src="https://img.shields.io/pypi/dm/pyproximal?style=flat&label=Downloads"
+                  />
+                </span>
+              </a>
+              <a
+                class="cta cta-link"
+                href="https://anaconda.org/channels/conda-forge/packages/pyproximal/overview"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open pyproximal conda-forge page"
+              >
+                <span>conda-forge</span>
+                <span class="cta-badges">
+                  <img
+                    alt="pyproximal conda-forge downloads"
+                    src="https://img.shields.io/conda/dn/conda-forge/pyproximal?style=flat&label=Downloads"
+                  />
+                </span>
+              </a>
+            </div>
+          </div>
+
+          <div class="project-row">
+            <p class="project-name">pylops-mpi</p>
+            <div class="links-grid">
+              <a
+                class="cta cta-link"
+                href="http://github.com/pyLops/pylops-mpi"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open pylops-mpi GitHub page"
+              >
+                <span>GitHub</span>
+                <span class="cta-badges">
+                  <img
+                    alt="pylops-mpi GitHub stars"
+                    src="https://img.shields.io/github/stars/PyLops/pylops-mpi?style=flat&label=Stars"
+                  />
+                  <img
+                    alt="pylops-mpi GitHub forks"
+                    src="https://img.shields.io/github/forks/PyLops/pylops-mpi?style=flat&label=Forks"
+                  />
+                </span>
+              </a>
+              <div
+                class="cta cta-link cta-docs"
+                aria-label="Open pylops-mpi Documentation pages"
+              >
+                <span>Documentation</span>
+                <span class="cta-doc-links">
+                  <a
+                    href="https://pylops.github.io/pylops-mpi/"
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open pylops-mpi latest documentation"
+                    >Latest</a
+                  >
+                </span>
+              </div>
+              <a
+                class="cta cta-link"
+                href="https://pypi.org/project/pylops-mpi/"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open pylops-mpi PyPI page"
+              >
+                <span>PyPI</span>
+                <span class="cta-badges">
+                  <img
+                    alt="pylops-mpi PyPI downloads"
+                    src="https://img.shields.io/pypi/dm/pylops-mpi?style=flat&label=Downloads"
+                  />
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer section reveal">
+      <p>
+        © Copyright 2025, PyLops Development Team. Created with the help of
+        <a href="https://cursor.com" target="_blank" rel="noreferrer"
+          >Cursor</a
+        >.
+      </p>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
