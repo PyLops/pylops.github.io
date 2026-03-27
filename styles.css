@@ -38,7 +38,7 @@ body {
 
 .bg-accent {
   position: fixed;
-  inset: 0;
+  inset: -90px;
   z-index: -1;
   pointer-events: none;
   background-color: var(--accent-glow);
