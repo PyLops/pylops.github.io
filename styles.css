@@ -182,6 +182,104 @@ h3 {
   color: var(--muted);
 }
 
+.activity-feed {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #0b0b0b, #080808);
+  padding: 1rem;
+}
+
+.activity-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.93rem;
+}
+
+.activity-cards {
+  margin-top: 0.4rem;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.activity-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: linear-gradient(180deg, #0d0d0d, #0a0a0a);
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+
+.activity-card:hover {
+  border-color: var(--accent-border);
+  transform: translateY(-2px);
+}
+
+.activity-card-repo {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.activity-card-title {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.activity-card-title a {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.activity-card-title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.activity-card-meta {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.activity-list-wrap {
+  margin-top: 0.95rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+
+.activity-list-title {
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.activity-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.38rem;
+}
+
+.activity-list li {
+  color: var(--muted);
+}
+
+.activity-list a {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.activity-list a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .domains-cta {
   margin: 1rem 0 0;
   color: var(--muted);

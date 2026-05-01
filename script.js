@@ -22,6 +22,8 @@ if ("IntersectionObserver" in window) {
 
 const GH_API = "https://api.github.com/repos";
 const ghHeaders = { Accept: "application/vnd.github+json" };
+const MAIN_REPOS = ["PyLops/pylops", "PyLops/pyproximal", "PyLops/pylops-mpi"];
+const TOP_ACTIVE_PR_CARDS = 4;
 
 function setCommitBar(el, { count, pct, tag, branch, compareUrl, error, noRelease }) {
   const countEl = el.querySelector('[data-role="count"]');
@@ -252,6 +254,136 @@ function setContributorCard(el, { count, contributors, contributorsUrl, error })
   }
 }
 
+function formatRelativeUpdated(isoDate) {
+  const time = Date.parse(String(isoDate || ""));
+  if (Number.isNaN(time)) return "Updated recently";
+
+  const deltaMs = Date.now() - time;
+  const minutes = Math.max(1, Math.round(deltaMs / 60000));
+
+  if (minutes < 60) {
+    return `Updated ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return `Updated ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  const days = Math.round(hours / 24);
+  return `Updated ${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+async function fetchOpenPullRequests(fullName) {
+  const endpoint = `${GH_API}/${fullName}/pulls?state=open&sort=updated&direction=desc&per_page=100`;
+  const res = await fetch(endpoint, { headers: ghHeaders });
+  if (!res.ok) {
+    throw new Error(`pulls:${fullName}`);
+  }
+  const pulls = await res.json();
+  if (!Array.isArray(pulls)) return [];
+
+  return pulls
+    .filter((pr) => pr && pr.html_url && pr.title && pr.updated_at)
+    .map((pr) => ({
+      id: pr.id,
+      number: pr.number,
+      title: String(pr.title),
+      url: String(pr.html_url),
+      updatedAt: String(pr.updated_at),
+      repo: fullName,
+      author: pr.user && pr.user.login ? String(pr.user.login) : "unknown",
+    }));
+}
+
+function renderOpenPullRequests(items) {
+  const feed = document.querySelector("[data-pr-feed]");
+  const status = document.querySelector("[data-pr-status]");
+  const cards = document.querySelector("[data-pr-cards]");
+  const listWrap = document.querySelector("[data-pr-list-wrap]");
+  const list = document.querySelector("[data-pr-list]");
+  if (!feed || !status || !cards || !listWrap || !list) return;
+
+  feed.setAttribute("aria-busy", "false");
+  cards.innerHTML = "";
+  list.innerHTML = "";
+
+  if (!Array.isArray(items) || !items.length) {
+    status.textContent = "No open pull requests right now.";
+    listWrap.hidden = true;
+    return;
+  }
+
+  status.textContent = `${items.length} open pull request${items.length === 1 ? "" : "s"} across the three repositories.`;
+
+  const top = items.slice(0, TOP_ACTIVE_PR_CARDS);
+  const rest = items.slice(TOP_ACTIVE_PR_CARDS);
+
+  top.forEach((pr) => {
+    const article = document.createElement("article");
+    article.className = "activity-card";
+
+    const repo = document.createElement("p");
+    repo.className = "activity-card-repo";
+    repo.textContent = pr.repo;
+
+    const title = document.createElement("h3");
+    title.className = "activity-card-title";
+    const link = document.createElement("a");
+    link.href = pr.url;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = `#${pr.number} ${pr.title}`;
+    link.setAttribute("aria-label", `Open PR ${pr.number} in ${pr.repo}`);
+    title.appendChild(link);
+
+    const meta = document.createElement("p");
+    meta.className = "activity-card-meta";
+    meta.textContent = `${formatRelativeUpdated(pr.updatedAt)} by @${pr.author}`;
+
+    article.appendChild(repo);
+    article.appendChild(title);
+    article.appendChild(meta);
+    cards.appendChild(article);
+  });
+
+  if (!rest.length) {
+    listWrap.hidden = true;
+    return;
+  }
+
+  listWrap.hidden = false;
+  rest.forEach((pr) => {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = pr.url;
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = `${pr.repo} · #${pr.number} ${pr.title}`;
+    link.setAttribute("aria-label", `Open PR ${pr.number} in ${pr.repo}`);
+    item.appendChild(link);
+    list.appendChild(item);
+  });
+}
+
+async function initOpenPullRequests() {
+  const feed = document.querySelector("[data-pr-feed]");
+  const status = document.querySelector("[data-pr-status]");
+  if (!feed || !status) return;
+
+  try {
+    const all = await Promise.all(MAIN_REPOS.map((repo) => fetchOpenPullRequests(repo)));
+    const merged = all
+      .flat()
+      .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+    renderOpenPullRequests(merged);
+  } catch {
+    feed.setAttribute("aria-busy", "false");
+    status.textContent =
+      "Could not load open pull requests (network or GitHub API rate limit).";
+  }
+}
+
 async function initProjectStats() {
   const rows = Array.from(document.querySelectorAll(".project-stats[data-repo]"));
   if (!rows.length) return;
@@ -331,8 +463,12 @@ async function initProjectStats() {
   });
 }
 
+async function initPageData() {
+  await Promise.allSettled([initProjectStats(), initOpenPullRequests()]);
+}
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initProjectStats);
+  document.addEventListener("DOMContentLoaded", initPageData);
 } else {
-  initProjectStats();
+  initPageData();
 }
