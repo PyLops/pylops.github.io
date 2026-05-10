@@ -1,4 +1,30 @@
 const revealNodes = document.querySelectorAll(".reveal");
+const themeToggleButton = document.getElementById("theme-toggle");
+const THEME_STORAGE_KEY = "pylops-website-theme";
+const rootElement = document.documentElement;
+
+function applyTheme(theme) {
+  const isLight = theme === "light";
+  rootElement.classList.toggle("light-theme", isLight);
+  if (!themeToggleButton) return;
+  themeToggleButton.setAttribute(
+    "aria-label",
+    isLight ? "Switch to dark theme" : "Switch to light theme"
+  );
+}
+
+if (themeToggleButton) {
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  applyTheme(storedTheme === "light" ? "light" : "dark");
+
+  themeToggleButton.addEventListener("click", () => {
+    const nextTheme = rootElement.classList.contains("light-theme")
+      ? "dark"
+      : "light";
+    applyTheme(nextTheme);
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  });
+}
 
 if ("IntersectionObserver" in window) {
   const observer = new IntersectionObserver(

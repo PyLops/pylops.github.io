@@ -11,7 +11,49 @@
   --accent-soft: rgba(17, 186, 131, 0.12);
   --accent-border: rgba(17, 186, 131, 0.38);
   --accent-glow: rgba(17, 186, 131, 0.06);
+  --pattern-line: rgba(255, 255, 255, 0.055);
+  --icon: #ffffff;
+  --panel-strong-start: #0b0b0b;
+  --panel-strong-end: #080808;
+  --panel-start: #0d0d0d;
+  --panel-end: #0a0a0a;
+  --panel-soft-start: #0c0c0c;
+  --panel-soft-end: #090909;
+  --track-bg: #1c1c1c;
+  --track-border: #2a2a2a;
+  --avatar-border: #3a3a3a;
+  --chip-border: #575757;
+  --chip-hover-bg: #171717;
+  --star-empty: #4f4f4f;
   --max-width: 1100px;
+}
+
+:root.light-theme {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-soft: #f5f7f8;
+  --fg: #0f1113;
+  --muted: #4d5560;
+  --line: #d7dee6;
+  --card: #ffffff;
+  --card-hover: #f0f4f8;
+  --accent-soft: rgba(17, 186, 131, 0.16);
+  --accent-border: rgba(17, 186, 131, 0.52);
+  --accent-glow: rgba(17, 186, 131, 0.07);
+  --pattern-line: rgba(15, 17, 19, 0.08);
+  --icon: #0f1113;
+  --panel-strong-start: #ffffff;
+  --panel-strong-end: #f4f7fa;
+  --panel-start: #ffffff;
+  --panel-end: #f6f9fc;
+  --panel-soft-start: #ffffff;
+  --panel-soft-end: #f7f9fc;
+  --track-bg: #e8edf3;
+  --track-border: #cfdae6;
+  --avatar-border: #cfd8e2;
+  --chip-border: #b9c5d1;
+  --chip-hover-bg: #edf3f8;
+  --star-empty: #a7b3c0;
 }
 
 *,
@@ -24,6 +66,68 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 1.1rem;
+  right: 1.1rem;
+  z-index: 20;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--fg);
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 200ms ease, border-color 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent-border);
+  background: var(--card-hover);
+}
+
+.theme-toggle-icon {
+  position: relative;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  color: var(--fg);
+  transition: transform 200ms ease;
+}
+
+.theme-toggle-icon::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 4px;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: var(--card);
+}
+
+.light-theme .theme-toggle-icon {
+  border-width: 1.6px;
+}
+
+.light-theme .theme-toggle-icon::after {
+  top: 50%;
+  left: 50%;
+  width: 0.2rem;
+  height: 0.2rem;
+  transform: translate(-50%, -50%);
+  background: var(--fg);
+  box-shadow: 0 -0.52rem 0 var(--fg), 0 0.52rem 0 var(--fg),
+    0.52rem 0 0 var(--fg), -0.52rem 0 0 var(--fg),
+    0.37rem 0.37rem 0 var(--fg), -0.37rem 0.37rem 0 var(--fg),
+    0.37rem -0.37rem 0 var(--fg), -0.37rem -0.37rem 0 var(--fg);
 }
 
 body {
@@ -44,8 +148,8 @@ body {
   background-color: var(--accent-glow);
   background-image: repeating-linear-gradient(
     120deg,
-    rgba(255, 255, 255, 0.055),
-    rgba(255, 255, 255, 0.055) 1px,
+    var(--pattern-line),
+    var(--pattern-line) 1px,
     transparent 1px,
     transparent 70px
   ),
@@ -148,7 +252,7 @@ h3 {
   width: 2rem;
   height: 2rem;
   margin-bottom: 0.6rem;
-  color: #fff;
+  color: var(--icon);
 }
 
 .feature-logo svg {
@@ -185,7 +289,7 @@ h3 {
 .activity-feed {
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: linear-gradient(180deg, #0b0b0b, #080808);
+  background: linear-gradient(180deg, var(--panel-strong-start), var(--panel-strong-end));
   padding: 1rem;
 }
 
@@ -206,7 +310,7 @@ h3 {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.8rem;
-  background: linear-gradient(180deg, #0d0d0d, #0a0a0a);
+  background: linear-gradient(180deg, var(--panel-start), var(--panel-end));
   transition: border-color 200ms ease, transform 200ms ease;
 }
 
@@ -292,7 +396,7 @@ h3 {
 }
 
 .domains-cta a:hover {
-  color: #fff;
+  color: var(--fg);
 }
 
 .links-grid {
@@ -336,7 +440,7 @@ h3 {
   padding: 0.65rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: linear-gradient(180deg, #0a0a0a, #080808);
+  background: linear-gradient(180deg, var(--panel-start), var(--panel-end));
 }
 
 .commit-activity-head {
@@ -365,9 +469,9 @@ h3 {
   position: relative;
   height: 10px;
   border-radius: 999px;
-  background: #1c1c1c;
+  background: var(--track-bg);
   overflow: hidden;
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--track-border);
 }
 
 .commit-bar-fill {
@@ -397,7 +501,7 @@ h3 {
 }
 
 .commit-activity-meta a:hover {
-  color: #fff;
+  color: var(--fg);
 }
 
 .contributor-card {
@@ -407,7 +511,7 @@ h3 {
   padding: 0.65rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: linear-gradient(180deg, #0a0a0a, #080808);
+  background: linear-gradient(180deg, var(--panel-start), var(--panel-end));
   min-height: 100%;
 }
 
@@ -447,7 +551,7 @@ h3 {
   height: 34px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid #3a3a3a;
+  border: 1px solid var(--avatar-border);
   flex-shrink: 0;
   transition: transform 160ms ease, border-color 160ms ease;
 }
@@ -491,7 +595,7 @@ h3 {
 }
 
 .contributor-meta a:hover {
-  color: #fff;
+  color: var(--fg);
 }
 
 .domain-list {
@@ -507,7 +611,7 @@ h3 {
   padding: 0.75rem 0.9rem;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: linear-gradient(180deg, #0c0c0c, #090909);
+  background: linear-gradient(180deg, var(--panel-soft-start), var(--panel-soft-end));
 }
 
 .domain-name {
@@ -532,7 +636,7 @@ h3 {
 .domain-example {
   color: var(--fg);
   text-decoration: none;
-  border: 1px solid #575757;
+  border: 1px solid var(--chip-border);
   border-radius: 999px;
   padding: 0.16rem 0.58rem;
   font-size: 0.78rem;
@@ -542,15 +646,15 @@ h3 {
 
 .domain-example:hover {
   border-color: var(--accent-border);
-  background: #171717;
+  background: var(--chip-hover-bg);
 }
 
 .star.filled {
-  color: #fff;
+  color: var(--fg);
 }
 
 .star.empty {
-  color: #4f4f4f;
+  color: var(--star-empty);
 }
 
 .cta {
@@ -559,7 +663,7 @@ h3 {
   align-items: center;
   min-height: 44px;
   padding: 0.72rem 1rem;
-  border: 1px solid #575757;
+  border: 1px solid var(--chip-border);
   border-radius: 10px;
   color: var(--fg);
   text-decoration: none;
@@ -598,7 +702,7 @@ h3 {
 .cta-doc-links a {
   color: var(--fg);
   text-decoration: none;
-  border: 1px solid #575757;
+  border: 1px solid var(--chip-border);
   border-radius: 999px;
   padding: 0.2rem 0.65rem;
   font-size: 0.82rem;
@@ -607,13 +711,13 @@ h3 {
 
 .cta-doc-links a:hover {
   border-color: var(--accent-border);
-  background: #171717;
+  background: var(--chip-hover-bg);
 }
 
 .cta:hover {
   transform: translateY(-2px);
-  background: #171717;
-  background: color-mix(in srgb, #171717 92%, var(--accent));
+  background: var(--chip-hover-bg);
+  background: color-mix(in srgb, var(--chip-hover-bg) 92%, var(--accent));
   border-color: #8a8a8a;
   border-color: color-mix(in srgb, #8a8a8a 70%, var(--accent));
 }
