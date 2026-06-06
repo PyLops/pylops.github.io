@@ -50,21 +50,140 @@ const GH_API = "https://api.github.com/repos";
 const ghHeaders = { Accept: "application/vnd.github+json" };
 const MAIN_REPOS = ["PyLops/pylops", "PyLops/pyproximal", "PyLops/pylops-mpi"];
 const TOP_ACTIVE_PR_CARDS = 4;
+const GH_CACHE_STORAGE_KEY = "pylops-gh-api-cache-v1";
+const GH_CACHE_TTL_MS = 30 * 60 * 1000;
+const GH_CACHE_STALE_MS = 24 * 60 * 60 * 1000;
+const GH_STATIC_STATS_URL = "./data/github-stats.json";
 
-function setCommitBar(el, { count, pct, tag, branch, compareUrl, error, noRelease }) {
+function readGhCacheStore() {
+  try {
+    const raw = localStorage.getItem(GH_CACHE_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeGhCacheStore(store) {
+  try {
+    localStorage.setItem(GH_CACHE_STORAGE_KEY, JSON.stringify(store));
+  } catch {
+    /* quota exceeded or private mode */
+  }
+}
+
+function getGhCacheEntry(url) {
+  const store = readGhCacheStore();
+  const entry = store[url];
+  if (!entry || typeof entry.fetchedAt !== "number") return null;
+  const age = Date.now() - entry.fetchedAt;
+  return {
+    data: entry.data,
+    status: entry.status,
+    age,
+    fresh: age < GH_CACHE_TTL_MS,
+    usable: age < GH_CACHE_STALE_MS,
+  };
+}
+
+function setGhCacheEntry(url, data, status) {
+  const store = readGhCacheStore();
+  store[url] = { fetchedAt: Date.now(), data, status };
+  writeGhCacheStore(store);
+}
+
+function isGhRateLimited(res) {
+  if (res.status !== 403) return false;
+  const remaining = res.headers.get("x-ratelimit-remaining");
+  const reset = res.headers.get("x-ratelimit-reset");
+  return remaining === "0" || Boolean(reset);
+}
+
+async function ghFetch(url, { allowNotFound = false } = {}) {
+  const cached = getGhCacheEntry(url);
+  if (cached?.fresh) {
+    return { data: cached.data, status: cached.status, fromCache: true, stale: false };
+  }
+
+  const res = await fetch(url, { headers: ghHeaders });
+  if (res.status === 404 && allowNotFound) {
+    setGhCacheEntry(url, null, 404);
+    return { data: null, status: 404, fromCache: false, stale: false };
+  }
+
+  if (!res.ok) {
+    if (isGhRateLimited(res) && cached?.usable) {
+      return { data: cached.data, status: cached.status, fromCache: true, stale: true };
+    }
+    throw new Error(`gh:${res.status}:${url}`);
+  }
+
+  const data = await res.json();
+  setGhCacheEntry(url, data, res.status);
+  return { data, status: res.status, fromCache: false, stale: false };
+}
+
+let ghServedStaleCache = false;
+
+function markGhStaleUsage() {
+  ghServedStaleCache = true;
+}
+
+function ghStaleNotice() {
+  return ghServedStaleCache
+    ? " Showing cached GitHub data (API rate limit reached)."
+    : "";
+}
+
+function showGhCacheNotice() {
+  if (!ghServedStaleCache) return;
+  const hint = document.querySelector(".commit-bars-hint");
+  if (!hint || hint.dataset.staleNotice === "1") return;
+  hint.dataset.staleNotice = "1";
+  hint.append(document.createTextNode(ghStaleNotice()));
+}
+
+const COMMIT_BATTERY_MAX = 100;
+const COMMIT_LEVEL_CLASSES = [
+  "battery-level-good",
+  "battery-level-warn",
+  "battery-level-critical",
+];
+
+function commitBatteryLevel(count) {
+  if (count < 50) return "battery-level-good";
+  if (count < 100) return "battery-level-warn";
+  return "battery-level-critical";
+}
+
+function commitBatteryFillPct(count) {
+  const n = typeof count === "number" ? count : 0;
+  return Math.max(0, Math.min(100, (n / COMMIT_BATTERY_MAX) * 100));
+}
+
+function setCommitBar(el, { count, tag, branch, compareUrl, error, noRelease }) {
   const countEl = el.querySelector('[data-role="count"]');
   const fillEl = el.querySelector('[data-role="fill"]');
-  const trackEl = el.querySelector(".commit-bar-track");
+  const batteryEl = el.querySelector(".commit-battery");
   const metaEl = el.querySelector('[data-role="meta"]');
 
   el.setAttribute("aria-busy", "false");
 
+  if (batteryEl) {
+    batteryEl.classList.remove(...COMMIT_LEVEL_CLASSES);
+  }
+  if (countEl) {
+    countEl.classList.remove(...COMMIT_LEVEL_CLASSES);
+  }
+
   if (error) {
     if (countEl) countEl.textContent = "—";
     if (fillEl) fillEl.style.width = "0%";
-    if (trackEl) {
-      trackEl.setAttribute("aria-valuenow", "0");
-      trackEl.setAttribute("aria-valuetext", "Unable to load");
+    if (batteryEl) {
+      batteryEl.setAttribute("aria-valuenow", "0");
+      batteryEl.setAttribute("aria-valuetext", "Unable to load");
     }
     if (metaEl) {
       metaEl.textContent =
@@ -76,9 +195,9 @@ function setCommitBar(el, { count, pct, tag, branch, compareUrl, error, noReleas
   if (noRelease) {
     if (countEl) countEl.textContent = "—";
     if (fillEl) fillEl.style.width = "0%";
-    if (trackEl) {
-      trackEl.setAttribute("aria-valuenow", "0");
-      trackEl.setAttribute("aria-valuetext", "No release");
+    if (batteryEl) {
+      batteryEl.setAttribute("aria-valuenow", "0");
+      batteryEl.setAttribute("aria-valuetext", "No release");
     }
     if (metaEl) {
       metaEl.textContent =
@@ -88,13 +207,18 @@ function setCommitBar(el, { count, pct, tag, branch, compareUrl, error, noReleas
   }
 
   const n = typeof count === "number" ? count : 0;
-  const width = Math.max(0, Math.min(100, typeof pct === "number" ? pct : 0));
+  const width = commitBatteryFillPct(n);
+  const level = commitBatteryLevel(n);
 
-  if (countEl) countEl.textContent = String(n);
+  if (countEl) {
+    countEl.textContent = String(n);
+    countEl.classList.add(level);
+  }
   if (fillEl) fillEl.style.width = `${width}%`;
-  if (trackEl) {
-    trackEl.setAttribute("aria-valuenow", String(Math.round(width)));
-    trackEl.setAttribute(
+  if (batteryEl) {
+    batteryEl.classList.add(level);
+    batteryEl.setAttribute("aria-valuenow", String(Math.round(width)));
+    batteryEl.setAttribute(
       "aria-valuetext",
       `${n} commits since ${tag ?? "release"}`
     );
@@ -125,87 +249,74 @@ function setCommitBar(el, { count, pct, tag, branch, compareUrl, error, noReleas
 }
 
 async function loadCommitsSinceRelease(fullName) {
-  const repoRes = await fetch(`${GH_API}/${fullName}`, { headers: ghHeaders });
-  if (!repoRes.ok) {
-    throw new Error("repo");
-  }
-  const repo = await repoRes.json();
-  const branch = repo.default_branch || "main";
+  const repoUrl = `${GH_API}/${fullName}`;
+  const repoResult = await ghFetch(repoUrl);
+  if (repoResult.stale) markGhStaleUsage();
+  const repo = repoResult.data;
+  const branch = repo?.default_branch || "main";
 
-  const relRes = await fetch(`${GH_API}/${fullName}/releases/latest`, {
-    headers: ghHeaders,
-  });
-  if (relRes.status === 404) {
+  const releaseUrl = `${GH_API}/${fullName}/releases/latest`;
+  const relResult = await ghFetch(releaseUrl, { allowNotFound: true });
+  if (relResult.stale) markGhStaleUsage();
+  if (relResult.status === 404) {
     return { noRelease: true, branch };
   }
-  if (!relRes.ok) {
-    throw new Error("release");
-  }
-  const rel = await relRes.json();
-  const tag = rel.tag_name;
+  const rel = relResult.data;
+  const tag = rel?.tag_name;
   if (!tag) {
     return { noRelease: true, branch };
   }
 
   const comparePath = `${encodeURIComponent(tag)}...${encodeURIComponent(branch)}`;
-  const compareRes = await fetch(`${GH_API}/${fullName}/compare/${comparePath}`, {
-    headers: ghHeaders,
-  });
-  if (!compareRes.ok) {
-    throw new Error("compare");
-  }
-  const compare = await compareRes.json();
+  const compareUrl = `${GH_API}/${fullName}/compare/${comparePath}`;
+  const compareResult = await ghFetch(compareUrl);
+  if (compareResult.stale) markGhStaleUsage();
+  const compare = compareResult.data;
   const count =
-    typeof compare.ahead_by === "number"
+    typeof compare?.ahead_by === "number"
       ? compare.ahead_by
-      : typeof compare.total_commits === "number"
+      : typeof compare?.total_commits === "number"
         ? compare.total_commits
         : 0;
-  const compareUrl =
-    typeof compare.html_url === "string" ? compare.html_url : null;
+  const compareHtmlUrl =
+    typeof compare?.html_url === "string" ? compare.html_url : null;
 
-  return { count, tag, branch, compareUrl };
+  return { count, tag, branch, compareUrl: compareHtmlUrl };
 }
 
 const MAX_AVATAR_TILES = 32;
 
 async function fetchContributors(fullName) {
-  const perPage = 100;
-  let page = 1;
+  const endpoint = `${GH_API}/${fullName}/contributors?per_page=100&page=1`;
+  const result = await ghFetch(endpoint);
+  if (result.stale) markGhStaleUsage();
+  const batch = Array.isArray(result.data) ? result.data : [];
   const contributors = [];
-  const maxPages = 40;
 
-  while (page <= maxPages) {
-    const res = await fetch(
-      `${GH_API}/${fullName}/contributors?per_page=${perPage}&page=${page}`,
-      { headers: ghHeaders }
-    );
-    if (!res.ok) {
-      throw new Error("contributors");
+  for (const u of batch) {
+    if (u && u.login && u.avatar_url) {
+      contributors.push({
+        login: String(u.login),
+        avatar_url: String(u.avatar_url),
+        html_url:
+          typeof u.html_url === "string"
+            ? u.html_url
+            : `https://github.com/${u.login}`,
+      });
     }
-    const batch = await res.json();
-    for (const u of batch) {
-      if (u && u.login && u.avatar_url) {
-        contributors.push({
-          login: String(u.login),
-          avatar_url: String(u.avatar_url),
-          html_url:
-            typeof u.html_url === "string"
-              ? u.html_url
-              : `https://github.com/${u.login}`,
-        });
-      }
-    }
-    if (batch.length < perPage) {
-      break;
-    }
-    page += 1;
   }
 
-  return { count: contributors.length, contributors };
+  return {
+    count: contributors.length,
+    countIsLowerBound: batch.length === 100,
+    contributors,
+  };
 }
 
-function setContributorCard(el, { count, contributors, contributorsUrl, error }) {
+function setContributorCard(
+  el,
+  { count, countIsLowerBound, contributors, contributorsUrl, error }
+) {
   const countEl = el.querySelector('[data-role="contributor-count"]');
   const avatarsEl = el.querySelector('[data-role="contributor-avatars"]');
   const metaEl = el.querySelector('[data-role="contributor-meta"]');
@@ -222,7 +333,10 @@ function setContributorCard(el, { count, contributors, contributorsUrl, error })
     return;
   }
 
-  if (countEl) countEl.textContent = String(count);
+  if (countEl) {
+    countEl.textContent =
+      countIsLowerBound && typeof count === "number" ? `${count}+` : String(count);
+  }
 
   if (avatarsEl) {
     avatarsEl.innerHTML = "";
@@ -302,11 +416,9 @@ function formatRelativeUpdated(isoDate) {
 
 async function fetchOpenPullRequests(fullName) {
   const endpoint = `${GH_API}/${fullName}/pulls?state=open&sort=updated&direction=desc&per_page=100`;
-  const res = await fetch(endpoint, { headers: ghHeaders });
-  if (!res.ok) {
-    throw new Error(`pulls:${fullName}`);
-  }
-  const pulls = await res.json();
+  const result = await ghFetch(endpoint);
+  if (result.stale) markGhStaleUsage();
+  const pulls = result.data;
   if (!Array.isArray(pulls)) return [];
 
   return pulls
@@ -340,7 +452,7 @@ function renderOpenPullRequests(items) {
     return;
   }
 
-  status.textContent = `${items.length} open pull request${items.length === 1 ? "" : "s"} across the three repositories.`;
+  status.textContent = `${items.length} open pull request${items.length === 1 ? "" : "s"} across the three repositories.${ghStaleNotice()}`;
 
   const top = items.slice(0, TOP_ACTIVE_PR_CARDS);
   const rest = items.slice(TOP_ACTIVE_PR_CARDS);
@@ -392,10 +504,11 @@ function renderOpenPullRequests(items) {
   });
 }
 
-async function initOpenPullRequests() {
+async function initOpenPullRequests(skipIfStaticLoaded) {
   const feed = document.querySelector("[data-pr-feed]");
   const status = document.querySelector("[data-pr-status]");
   if (!feed || !status) return;
+  if (skipIfStaticLoaded) return;
 
   try {
     const all = await Promise.all(MAIN_REPOS.map((repo) => fetchOpenPullRequests(repo)));
@@ -403,10 +516,74 @@ async function initOpenPullRequests() {
       .flat()
       .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
     renderOpenPullRequests(merged);
+    showGhCacheNotice();
   } catch {
     feed.setAttribute("aria-busy", "false");
     status.textContent =
       "Could not load open pull requests (network or GitHub API rate limit).";
+  }
+}
+
+function applyStaticProjectStats(payload) {
+  if (!payload || typeof payload !== "object") return false;
+
+  const repos = payload.repos;
+  if (!repos || typeof repos !== "object") return false;
+
+  const rows = Array.from(document.querySelectorAll(".project-stats[data-repo]"));
+  let applied = 0;
+
+  rows.forEach((row) => {
+    const fullName = row.getAttribute("data-repo");
+    const repoData = fullName ? repos[fullName] : null;
+    if (!repoData) return;
+
+    const commitEl = row.querySelector(".commit-activity");
+    const contribEl = row.querySelector(".contributor-card");
+
+    if (commitEl && repoData.commits) {
+      const c = repoData.commits;
+      if (c.noRelease) {
+        setCommitBar(commitEl, { noRelease: true, branch: c.branch || "main" });
+      } else if (typeof c.count === "number") {
+        setCommitBar(commitEl, {
+          count: c.count,
+          tag: c.tag,
+          branch: c.branch,
+          compareUrl: c.compareUrl,
+        });
+      }
+      applied += 1;
+    }
+
+    if (contribEl && repoData.contributors) {
+      const k = repoData.contributors;
+      setContributorCard(contribEl, {
+        count: k.count,
+        countIsLowerBound: Boolean(k.countIsLowerBound),
+        contributors: k.list,
+        contributorsUrl: `https://github.com/${fullName}/graphs/contributors`,
+      });
+    }
+  });
+
+  if (payload.pullRequests) {
+    renderOpenPullRequests(payload.pullRequests);
+  }
+
+  return applied > 0;
+}
+
+async function loadStaticProjectStats() {
+  try {
+    const res = await fetch(GH_STATIC_STATS_URL, { cache: "no-cache" });
+    if (!res.ok) return null;
+    const payload = await res.json();
+    if (!payload || typeof payload.fetchedAt !== "number") return null;
+    if (Date.now() - payload.fetchedAt > GH_CACHE_STALE_MS) return null;
+    return payload;
+  } catch {
+    return null;
   }
 }
 
@@ -439,16 +616,6 @@ async function initProjectStats() {
     })
   );
 
-  const numericCounts = results
-    .map((r) => {
-      if (!r || r.commitRes.status !== "fulfilled") return null;
-      const val = r.commitRes.value;
-      if (!val || val.noRelease) return null;
-      return val.count;
-    })
-    .filter((c) => typeof c === "number");
-  const maxCount = numericCounts.length ? Math.max(...numericCounts) : 0;
-
   results.forEach((r) => {
     if (!r) return;
 
@@ -463,13 +630,7 @@ async function initProjectStats() {
           setCommitBar(r.commitEl, { noRelease: true, branch: data.branch });
         } else {
           const { count, tag, branch, compareUrl } = data;
-          const pct =
-            maxCount > 0 && typeof count === "number"
-              ? (count / maxCount) * 100
-              : count && count > 0
-                ? 100
-                : 0;
-          setCommitBar(r.commitEl, { count, pct, tag, branch, compareUrl });
+          setCommitBar(r.commitEl, { count, tag, branch, compareUrl });
         }
       }
     }
@@ -479,6 +640,7 @@ async function initProjectStats() {
         const payload = r.contribRes.value;
         setContributorCard(r.contribEl, {
           count: payload.count,
+          countIsLowerBound: payload.countIsLowerBound,
           contributors: payload.contributors,
           contributorsUrl: `https://github.com/${r.fullName}/graphs/contributors`,
         });
@@ -487,10 +649,19 @@ async function initProjectStats() {
       }
     }
   });
+
+  showGhCacheNotice();
 }
 
 async function initPageData() {
-  await Promise.allSettled([initProjectStats(), initOpenPullRequests()]);
+  const staticPayload = await loadStaticProjectStats();
+  const usedStatic =
+    staticPayload !== null && applyStaticProjectStats(staticPayload);
+
+  await Promise.allSettled([
+    usedStatic ? Promise.resolve() : initProjectStats(),
+    initOpenPullRequests(usedStatic),
+  ]);
 }
 
 if (document.readyState === "loading") {
