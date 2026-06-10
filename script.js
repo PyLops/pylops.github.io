@@ -54,9 +54,9 @@ const GH_CACHE_STORAGE_KEY = "pylops-gh-api-cache-v1";
 const GH_CACHE_TTL_MS = 30 * 60 * 1000;
 const GH_CACHE_STALE_MS = 24 * 60 * 60 * 1000;
 const GH_STATIC_STATS_URL = "./data/github-stats.json";
-const PYPI_BADGE_CACHE_STORAGE_KEY = "pylops-pypi-badge-cache-v1";
-const PYPI_BADGE_CACHE_TTL_MS = GH_CACHE_TTL_MS;
-const PYPI_BADGE_CACHE_STALE_MS = GH_CACHE_STALE_MS;
+const BADGE_CACHE_STORAGE_KEY = "pylops-shields-badge-cache-v1";
+const BADGE_CACHE_TTL_MS = GH_CACHE_TTL_MS;
+const BADGE_CACHE_STALE_MS = GH_CACHE_STALE_MS;
 
 function readGhCacheStore() {
   try {
@@ -148,9 +148,9 @@ function showGhCacheNotice() {
   hint.append(document.createTextNode(ghStaleNotice()));
 }
 
-function readPypiBadgeCacheStore() {
+function readBadgeCacheStore() {
   try {
-    const raw = localStorage.getItem(PYPI_BADGE_CACHE_STORAGE_KEY);
+    const raw = localStorage.getItem(BADGE_CACHE_STORAGE_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === "object" ? parsed : {};
@@ -159,43 +159,43 @@ function readPypiBadgeCacheStore() {
   }
 }
 
-function writePypiBadgeCacheStore(store) {
+function writeBadgeCacheStore(store) {
   try {
-    localStorage.setItem(PYPI_BADGE_CACHE_STORAGE_KEY, JSON.stringify(store));
+    localStorage.setItem(BADGE_CACHE_STORAGE_KEY, JSON.stringify(store));
   } catch {
     /* quota exceeded or private mode */
   }
 }
 
-function getPypiBadgeCacheEntry(url) {
-  const store = readPypiBadgeCacheStore();
+function getBadgeCacheEntry(url) {
+  const store = readBadgeCacheStore();
   const entry = store[url];
   if (!entry || typeof entry.fetchedAt !== "number") return null;
   const age = Date.now() - entry.fetchedAt;
   return {
     svg: entry.svg,
-    fresh: age < PYPI_BADGE_CACHE_TTL_MS,
-    usable: age < PYPI_BADGE_CACHE_STALE_MS,
+    fresh: age < BADGE_CACHE_TTL_MS,
+    usable: age < BADGE_CACHE_STALE_MS,
   };
 }
 
-function setPypiBadgeCacheEntry(url, svg) {
-  const store = readPypiBadgeCacheStore();
+function setBadgeCacheEntry(url, svg) {
+  const store = readBadgeCacheStore();
   store[url] = { fetchedAt: Date.now(), svg };
-  writePypiBadgeCacheStore(store);
+  writeBadgeCacheStore(store);
 }
 
 function svgToDataUrl(svg) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-async function applyCachedPypiBadge(img) {
+async function applyCachedBadge(img) {
   const originalSrc =
     img.dataset.badgeSrc || img.getAttribute("src") || img.currentSrc;
   if (!originalSrc) return;
   img.dataset.badgeSrc = originalSrc;
 
-  const cached = getPypiBadgeCacheEntry(originalSrc);
+  const cached = getBadgeCacheEntry(originalSrc);
   if (cached?.fresh && cached.svg) {
     img.src = svgToDataUrl(cached.svg);
     return;
@@ -206,12 +206,12 @@ async function applyCachedPypiBadge(img) {
       cache: "no-cache",
       headers: { Accept: "image/svg+xml" },
     });
-    if (!res.ok) throw new Error(`pypi-badge:${res.status}`);
+    if (!res.ok) throw new Error(`badge:${res.status}`);
 
     const svg = await res.text();
-    if (!svg.includes("<svg")) throw new Error("pypi-badge:invalid-svg");
+    if (!svg.includes("<svg")) throw new Error("badge:invalid-svg");
 
-    setPypiBadgeCacheEntry(originalSrc, svg);
+    setBadgeCacheEntry(originalSrc, svg);
     img.src = svgToDataUrl(svg);
   } catch {
     if (cached?.usable && cached.svg) {
@@ -220,12 +220,14 @@ async function applyCachedPypiBadge(img) {
   }
 }
 
-async function initPypiBadgeCache() {
+async function initBadgeCache() {
   const badges = Array.from(
-    document.querySelectorAll('img[data-badge-cache="pypi"]')
+    document.querySelectorAll(
+      '.cta-badges img[data-badge-src], .cta-badges img[src^="https://img.shields.io/"]'
+    )
   );
   if (!badges.length) return;
-  await Promise.allSettled(badges.map((badge) => applyCachedPypiBadge(badge)));
+  await Promise.allSettled(badges.map((badge) => applyCachedBadge(badge)));
 }
 
 const COMMIT_BATTERY_MAX = 100;
@@ -744,7 +746,7 @@ async function initPageData() {
   await Promise.allSettled([
     usedStatic ? Promise.resolve() : initProjectStats(),
     initOpenPullRequests(usedStatic),
-    initPypiBadgeCache(),
+    initBadgeCache(),
   ]);
 }
 
