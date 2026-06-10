@@ -57,6 +57,7 @@ const GH_STATIC_STATS_URL = "./data/github-stats.json";
 const BADGE_CACHE_STORAGE_KEY = "pylops-shields-badge-cache-v1";
 const BADGE_CACHE_TTL_MS = GH_CACHE_TTL_MS;
 const BADGE_CACHE_STALE_MS = GH_CACHE_STALE_MS;
+const ghRepoFetches = new Map();
 
 function readGhCacheStore() {
   try {
@@ -128,6 +129,15 @@ async function ghFetch(url, { allowNotFound = false } = {}) {
   return { data, status: res.status, fromCache: false, stale: false };
 }
 
+async function fetchGithubRepo(fullName) {
+  if (!ghRepoFetches.has(fullName)) {
+    ghRepoFetches.set(fullName, ghFetch(`${GH_API}/${fullName}`));
+  }
+  const result = await ghRepoFetches.get(fullName);
+  if (result.stale) markGhStaleUsage();
+  return result.data;
+}
+
 let ghServedStaleCache = false;
 
 function markGhStaleUsage() {
@@ -189,6 +199,58 @@ function svgToDataUrl(svg) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+function escapeSvgText(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function formatBadgeCount(value) {
+  const count = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(count)) return "?";
+  if (count < 1000) return String(count);
+  if (count < 10000) return `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `${Math.round(count / 1000)}k`;
+}
+
+function badgeTextWidth(text) {
+  return Math.max(34, Math.round(String(text).length * 6.5 + 10));
+}
+
+function createFlatBadgeSvg(label, message, color = "#4c1") {
+  const safeLabel = escapeSvgText(label);
+  const safeMessage = escapeSvgText(message);
+  const labelWidth = badgeTextWidth(safeLabel);
+  const messageWidth = badgeTextWidth(safeMessage);
+  const width = labelWidth + messageWidth;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="20" role="img" aria-label="${safeLabel}: ${safeMessage}"><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="${width}" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="${labelWidth}" height="20" fill="#555"/><rect x="${labelWidth}" width="${messageWidth}" height="20" fill="${color}"/><rect width="${width}" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110"><text aria-hidden="true" x="${labelWidth * 5}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${(labelWidth - 10) * 10}">${safeLabel}</text><text x="${labelWidth * 5}" y="140" transform="scale(.1)" fill="#fff" textLength="${(labelWidth - 10) * 10}">${safeLabel}</text><text aria-hidden="true" x="${(labelWidth + messageWidth / 2) * 10}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${(messageWidth - 10) * 10}">${safeMessage}</text><text x="${(labelWidth + messageWidth / 2) * 10}" y="140" transform="scale(.1)" fill="#fff" textLength="${(messageWidth - 10) * 10}">${safeMessage}</text></g></svg>`;
+}
+
+function parseGithubBadge(src) {
+  const match = String(src).match(
+    /img\.shields\.io\/github\/(stars|forks)\/([^/?]+)\/([^?]+)/
+  );
+  if (!match) return null;
+
+  const [, metric, owner, repo] = match;
+  return {
+    metric,
+    fullName: `${owner}/${decodeURIComponent(repo)}`,
+    label: metric === "stars" ? "Stars" : "Forks",
+  };
+}
+
+async function renderGithubBadge(img, badge) {
+  const repo = await fetchGithubRepo(badge.fullName);
+  const value =
+    badge.metric === "stars" ? repo?.stargazers_count : repo?.forks_count;
+  const svg = createFlatBadgeSvg(badge.label, formatBadgeCount(value));
+  img.src = svgToDataUrl(svg);
+  setBadgeCacheEntry(img.dataset.badgeSrc, svg);
+}
+
 async function applyCachedBadge(img) {
   const originalSrc =
     img.dataset.badgeSrc || img.getAttribute("src") || img.currentSrc;
@@ -199,6 +261,19 @@ async function applyCachedBadge(img) {
   if (cached?.fresh && cached.svg) {
     img.src = svgToDataUrl(cached.svg);
     return;
+  }
+
+  const githubBadge = parseGithubBadge(originalSrc);
+  if (githubBadge) {
+    try {
+      await renderGithubBadge(img, githubBadge);
+      return;
+    } catch {
+      if (cached?.usable && cached.svg) {
+        img.src = svgToDataUrl(cached.svg);
+        return;
+      }
+    }
   }
 
   try {
@@ -334,10 +409,7 @@ function setCommitBar(el, { count, tag, branch, compareUrl, error, noRelease }) 
 }
 
 async function loadCommitsSinceRelease(fullName) {
-  const repoUrl = `${GH_API}/${fullName}`;
-  const repoResult = await ghFetch(repoUrl);
-  if (repoResult.stale) markGhStaleUsage();
-  const repo = repoResult.data;
+  const repo = await fetchGithubRepo(fullName);
   const branch = repo?.default_branch || "main";
 
   const releaseUrl = `${GH_API}/${fullName}/releases/latest`;
