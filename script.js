@@ -242,6 +242,17 @@ function parseGithubBadge(src) {
   };
 }
 
+function fallbackBadgeForSrc(src, message = "...") {
+  const badgeSrc = String(src);
+  if (badgeSrc.includes("img.shields.io/pypi/dm/")) {
+    return createFlatBadgeSvg("Downloads", message, "#007ec6");
+  }
+  if (badgeSrc.includes("img.shields.io/conda/dn/")) {
+    return createFlatBadgeSvg("Downloads", message, "#44a833");
+  }
+  return null;
+}
+
 async function renderGithubBadge(img, badge) {
   const repo = await fetchGithubRepo(badge.fullName);
   const value =
@@ -276,6 +287,11 @@ async function applyCachedBadge(img) {
     }
   }
 
+  const fallbackSvg = fallbackBadgeForSrc(originalSrc);
+  if (fallbackSvg) {
+    img.src = svgToDataUrl(fallbackSvg);
+  }
+
   try {
     const res = await fetch(originalSrc, {
       cache: "no-cache",
@@ -291,6 +307,9 @@ async function applyCachedBadge(img) {
   } catch {
     if (cached?.usable && cached.svg) {
       img.src = svgToDataUrl(cached.svg);
+    } else {
+      const unavailableSvg = fallbackBadgeForSrc(originalSrc, "?");
+      if (unavailableSvg) img.src = svgToDataUrl(unavailableSvg);
     }
   }
 }
